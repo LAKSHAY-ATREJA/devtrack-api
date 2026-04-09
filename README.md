@@ -1,102 +1,115 @@
-# DevTrack API 🚀
+# DevTrack API
 
-A production-ready REST API for tracking job applications — built with Node.js, Express, and MongoDB. Features JWT authentication, full test coverage, Docker support, and CI/CD via GitHub Actions.
+A production-ready REST API for tracking job applications, built with Node.js, Express, and MongoDB. Includes JWT authentication, full CRUD operations, filtering and pagination, security hardening, unit and integration tests, Docker support, and a GitHub Actions CI/CD pipeline.
 
-![CI](https://github.com/YOUR_USERNAME/devtrack-api/actions/workflows/ci.yml/badge.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)
+## Features
 
-## ✨ Features
+- JWT-based authentication (register and login)
+- Full CRUD for job applications with status tracking (applied, interview, offer, rejected, accepted)
+- Filtering and pagination on job listings
+- Security hardening via Helmet, CORS, and rate limiting (100 req / 15 min per IP)
+- Input validation with express-validator
+- Unit and integration tests with Jest, Supertest, and mongodb-memory-server (no real database needed to run tests)
+- Docker and docker-compose for local and production deployment
+- GitHub Actions CI/CD pipeline
+- Detailed API documentation in docs/api.md
 
-- 🔐 JWT-based authentication (register / login)
-- 📋 Full CRUD for job applications (create, read, update, delete)
-- 🔍 Filtering, sorting & pagination on job listings
-- 🛡️ Security hardening — helmet, rate limiting, input validation
-- 🧪 Unit & integration tests with Jest + Supertest
-- 🐳 Dockerized with docker-compose
-- ⚙️ CI/CD pipeline with GitHub Actions
-- 📖 API documentation in [docs/api.md](docs/api.md)
+## Tech stack
 
-## 🛠️ Tech Stack
+| Layer    | Technology             |
+|----------|------------------------|
+| Runtime  | Node.js 18+            |
+| Framework| Express 4              |
+| Database | MongoDB + Mongoose     |
+| Auth     | JWT + bcrypt           |
+| Testing  | Jest, Supertest        |
+| DevOps   | Docker, GitHub Actions |
 
-| Layer       | Technology              |
-|-------------|-------------------------|
-| Runtime     | Node.js 18+             |
-| Framework   | Express 4               |
-| Database    | MongoDB + Mongoose      |
-| Auth        | JWT + bcrypt            |
-| Testing     | Jest, Supertest         |
-| DevOps      | Docker, GitHub Actions  |
+## Prerequisites
 
-## 🚀 Quick Start
+- Node.js 18 or later
+- MongoDB (local installation or MongoDB Atlas) — or use Docker to skip this
 
-### Prerequisites
-- Node.js >= 18
-- MongoDB (local or Atlas) — or just use Docker
-
-### Local setup
+## Local setup
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/devtrack-api.git
+git clone https://github.com/LAKSHAY-ATREJA/devtrack-api.git
 cd devtrack-api
 
-# 2. Install dependencies
 npm install
 
-# 3. Configure environment
 cp .env.example .env
-# edit .env with your values
+# Edit .env with your MongoDB URI and JWT secret
 
-# 4. Run in dev mode
 npm run dev
 ```
 
-### Run with Docker
+The API will be available at http://localhost:5000.
+
+## Docker setup
 
 ```bash
 docker-compose up --build
 ```
 
-API will be available at `http://localhost:5000`.
+This starts both the API server and a MongoDB instance. No local MongoDB installation required.
 
-## 📡 API Endpoints
+## Environment variables
 
-| Method | Endpoint             | Description           | Auth |
-|--------|----------------------|-----------------------|------|
-| POST   | /api/auth/register   | Register new user     | ❌   |
-| POST   | /api/auth/login      | Login, returns JWT    | ❌   |
-| GET    | /api/jobs            | List all jobs         | ✅   |
-| POST   | /api/jobs            | Create a job entry    | ✅   |
-| GET    | /api/jobs/:id        | Get single job        | ✅   |
-| PATCH  | /api/jobs/:id        | Update a job          | ✅   |
-| DELETE | /api/jobs/:id        | Delete a job          | ✅   |
+See `.env.example` for all required variables.
 
-See [docs/api.md](docs/api.md) for request/response examples.
+| Variable       | Description                              |
+|----------------|------------------------------------------|
+| MONGO_URI      | MongoDB connection string                |
+| JWT_SECRET     | Secret key for signing JWTs             |
+| JWT_EXPIRES_IN | Token expiry (default: 7d)               |
+| PORT           | Server port (default: 5000)              |
+| NODE_ENV       | Environment (development/production/test)|
 
-## 🧪 Testing
+## API endpoints
+
+| Method | Endpoint           | Description        | Auth required |
+|--------|--------------------|--------------------|---------------|
+| POST   | /api/auth/register | Register new user  | No            |
+| POST   | /api/auth/login    | Login, returns JWT | No            |
+| GET    | /api/jobs          | List all jobs      | Yes           |
+| POST   | /api/jobs          | Create a job entry | Yes           |
+| GET    | /api/jobs/:id      | Get single job     | Yes           |
+| PATCH  | /api/jobs/:id      | Update a job       | Yes           |
+| DELETE | /api/jobs/:id      | Delete a job       | Yes           |
+| GET    | /health            | Health check       | No            |
+
+Authenticated requests require the header: `Authorization: Bearer <token>`
+
+Full request and response examples are in [docs/api.md](docs/api.md).
+
+## Testing
+
+Tests use an in-memory MongoDB instance so no database setup is required.
 
 ```bash
-npm test            # run all tests
-npm run test:cov    # with coverage report
+npm test              # run all tests
+npm run test:cov      # with coverage report
 ```
 
-## 📁 Project Structure
+## Project structure
 
 ```
 src/
-├── config/        # database connection
-├── routes/        # route definitions
-├── controllers/   # request handlers
-├── models/        # mongoose schemas
-├── middleware/    # auth, error handling
-└── utils/         # logger, helpers
+    config/       database connection
+    controllers/  request handlers (auth, jobs)
+    middleware/   JWT auth, error handler
+    models/       Mongoose schemas (User, Job)
+    routes/       route definitions
+    utils/        logger
+tests/
+    auth.test.js  authentication endpoint tests
+    jobs.test.js  job CRUD endpoint tests
+    setup.js      shared test setup (in-memory DB)
+docs/
+    api.md        full API reference with examples
 ```
 
-## 📄 License
+## License
 
-MIT — see [LICENSE](LICENSE)
-
----
-
-Built by **YOUR NAME** · Final Year Software Engineering · [LinkedIn](https://linkedin.com/in/YOUR_PROFILE)
+MIT. See LICENSE. Built by Lakshay Atreja.

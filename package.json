@@ -11,7 +11,7 @@
     "lint": "eslint src tests"
   },
   "keywords": ["rest-api", "express", "mongodb", "jwt", "nodejs"],
-  "author": "YOUR NAME",
+  "author": "Lakshay Atreja",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
