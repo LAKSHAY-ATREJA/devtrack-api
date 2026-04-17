@@ -32,6 +32,22 @@ describe('POST /api/auth/register', () => {
 
     expect(res.statusCode).toBe(400);
   });
+
+  it('rejects missing name', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: validUser.email, password: validUser.password });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('rejects invalid email format', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ ...validUser, email: 'not-an-email' });
+
+    expect(res.statusCode).toBe(400);
+  });
 });
 
 describe('POST /api/auth/login', () => {
@@ -46,6 +62,7 @@ describe('POST /api/auth/login', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.token).toBeDefined();
+    expect(res.body.user.email).toBe(validUser.email);
   });
 
   it('rejects wrong password', async () => {
@@ -59,5 +76,29 @@ describe('POST /api/auth/login', () => {
   it('rejects missing fields', async () => {
     const res = await request(app).post('/api/auth/login').send({});
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('GET /api/auth/me', () => {
+  let token;
+
+  beforeEach(async () => {
+    const res = await request(app).post('/api/auth/register').send(validUser);
+    token = res.body.token;
+  });
+
+  it('returns the current user profile', async () => {
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.user.email).toBe(validUser.email);
+    expect(res.body.user.name).toBe(validUser.name);
+  });
+
+  it('rejects unauthenticated requests', async () => {
+    const res = await request(app).get('/api/auth/me');
+    expect(res.statusCode).toBe(401);
   });
 });

@@ -33,6 +33,21 @@ describe('Job CRUD', () => {
 
     expect(res.statusCode).toBe(201);
     expect(res.body.job.company).toBe(sampleJob.company);
+    expect(res.body.job.position).toBe(sampleJob.position);
+    expect(res.body.job.status).toBe(sampleJob.status);
+  });
+
+  it('rejects job creation with missing required fields', async () => {
+    const res = await auth(request(app).post('/api/jobs')).send({ company: 'Acme' });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('rejects job creation with invalid status', async () => {
+    const res = await auth(request(app).post('/api/jobs')).send({
+      ...sampleJob,
+      status: 'pending',
+    });
+    expect(res.statusCode).toBe(400);
   });
 
   it('lists jobs with pagination metadata', async () => {
@@ -42,6 +57,8 @@ describe('Job CRUD', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.jobs).toHaveLength(1);
     expect(res.body.total).toBe(1);
+    expect(res.body.page).toBe(1);
+    expect(res.body.pages).toBeDefined();
   });
 
   it('filters jobs by status', async () => {
@@ -51,6 +68,19 @@ describe('Job CRUD', () => {
     const res = await auth(request(app).get('/api/jobs?status=offer'));
     expect(res.body.jobs).toHaveLength(1);
     expect(res.body.jobs[0].status).toBe('offer');
+  });
+
+  it('rejects invalid status filter', async () => {
+    const res = await auth(request(app).get('/api/jobs?status=invalid'));
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('gets a single job by id', async () => {
+    const created = await auth(request(app).post('/api/jobs')).send(sampleJob);
+    const res = await auth(request(app).get(`/api/jobs/${created.body.job._id}`));
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.job._id).toBe(created.body.job._id);
   });
 
   it('updates a job', async () => {
@@ -73,7 +103,7 @@ describe('Job CRUD', () => {
     expect(list.body.jobs).toHaveLength(0);
   });
 
-  it('returns 404 for another user\'s job', async () => {
+  it("returns 404 for another user's job", async () => {
     const created = await auth(request(app).post('/api/jobs')).send(sampleJob);
 
     const other = await request(app).post('/api/auth/register').send({
@@ -87,5 +117,35 @@ describe('Job CRUD', () => {
       .set('Authorization', `Bearer ${other.body.token}`);
 
     expect(res.statusCode).toBe(404);
+  });
+
+  it('returns 400 for invalid job id format', async () => {
+    const res = await auth(request(app).get('/api/jobs/not-a-valid-id'));
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('GET /api/jobs/stats', () => {
+  it('returns stats with zero counts when no jobs exist', async () => {
+    const res = await auth(request(app).get('/api/jobs/stats'));
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.total).toBe(0);
+    expect(res.body.stats).toBeDefined();
+    expect(res.body.stats.applied).toBe(0);
+  });
+
+  it('returns correct counts after creating jobs', async () => {
+    await auth(request(app).post('/api/jobs')).send(sampleJob);
+    await auth(request(app).post('/api/jobs')).send({ ...sampleJob, status: 'interview' });
+    await auth(request(app).post('/api/jobs')).send({ ...sampleJob, status: 'offer' });
+
+    const res = await auth(request(app).get('/api/jobs/stats'));
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.total).toBe(3);
+    expect(res.body.stats.applied).toBe(1);
+    expect(res.body.stats.interview).toBe(1);
+    expect(res.body.stats.offer).toBe(1);
   });
 });
