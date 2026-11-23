@@ -123,6 +123,14 @@ POST /jobs
 
 Create a new job application.
 
+Optional header:
+    Idempotency-Key: application-create-001
+
+The key must contain 8-128 letters, numbers, dots, underscores, colons, or
+hyphens. Retrying the same payload with the same key returns the original job
+with HTTP 200 and `Idempotency-Replayed: true`. Reusing a key with a different
+payload returns HTTP 409. Keys are isolated per authenticated user.
+
 Request body:
     {
       "company": "Atlassian",
@@ -139,6 +147,9 @@ Optional: status, location, salary, notes, appliedDate
 
 Response 201:
     { "job": { ... } }
+
+Response 200: successful idempotent replay
+Response 409: key already used with a different payload
 
 
 GET /jobs/:id

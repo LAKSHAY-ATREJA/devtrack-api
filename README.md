@@ -8,6 +8,7 @@ Features
 
 - User registration and login with bcrypt password hashing and JWT tokens
 - Full CRUD for job applications: create, read, update, delete
+- Durable per-user idempotency keys for retry-safe and concurrency-safe job creation
 - Status workflow: applied, interview, offer, rejected, accepted
 - Filtering by status and sorting on any field, with page-based pagination
 - Aggregated stats endpoint: counts per status and total
@@ -141,6 +142,16 @@ The test suite covers:
 - Ownership isolation (user A cannot access user B's jobs)
 - Validation errors (missing required fields, invalid status, invalid ID format)
 - Stats aggregation (empty state, counts after creating jobs)
+- Idempotent replays, payload conflicts, per-user key isolation, and concurrent duplicate submissions
+
+### Retry-safe creation
+
+Clients may attach an `Idempotency-Key` header to `POST /api/jobs`. A compound
+MongoDB uniqueness constraint prevents concurrent requests with the same user
+and key from creating duplicates. Identical retries replay the original result;
+different payloads using the same key are rejected with HTTP 409. The design and
+retention trade-offs are recorded in
+[`docs/adr/0001-idempotent-job-creation.md`](docs/adr/0001-idempotent-job-creation.md).
 
 ---
 

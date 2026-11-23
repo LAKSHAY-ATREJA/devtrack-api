@@ -37,6 +37,82 @@ describe('Job CRUD', () => {
     expect(res.body.job.status).toBe(sampleJob.status);
   });
 
+  it('replays an idempotent create without duplicating the job', async () => {
+    const key = 'application-create-001';
+    const first = await auth(request(app).post('/api/jobs'))
+      .set('Idempotency-Key', key)
+      .send(sampleJob);
+    const replay = await auth(request(app).post('/api/jobs'))
+      .set('Idempotency-Key', key)
+      .send(sampleJob);
+
+    expect(first.statusCode).toBe(201);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.headers['idempotency-replayed']).toBe('true');
+    expect(replay.body.job._id).toBe(first.body.job._id);
+    expect(replay.body.job.idempotencyKey).toBeUndefined();
+
+    const list = await auth(request(app).get('/api/jobs'));
+    expect(list.body.jobs).toHaveLength(1);
+  });
+
+  it('rejects reuse of an idempotency key with a different payload', async () => {
+    const key = 'application-create-002';
+    await auth(request(app).post('/api/jobs'))
+      .set('Idempotency-Key', key)
+      .send(sampleJob);
+    const conflict = await auth(request(app).post('/api/jobs'))
+      .set('Idempotency-Key', key)
+      .send({ ...sampleJob, company: 'Canva' });
+
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.body.error).toMatch(/different request/);
+  });
+
+  it('collapses concurrent creates with the same idempotency key', async () => {
+    const key = 'application-create-race-001';
+    const responses = await Promise.all([
+      auth(request(app).post('/api/jobs')).set('Idempotency-Key', key).send(sampleJob),
+      auth(request(app).post('/api/jobs')).set('Idempotency-Key', key).send(sampleJob),
+    ]);
+
+    expect(responses.map((response) => response.statusCode).sort()).toEqual([200, 201]);
+    expect(new Set(responses.map((response) => response.body.job._id)).size).toBe(1);
+
+    const list = await auth(request(app).get('/api/jobs'));
+    expect(list.body.jobs).toHaveLength(1);
+  });
+
+  it('scopes idempotency keys to the authenticated user', async () => {
+    const key = 'shared-application-key';
+    const first = await auth(request(app).post('/api/jobs'))
+      .set('Idempotency-Key', key)
+      .send(sampleJob);
+    const other = await request(app).post('/api/auth/register').send({
+      name: 'Other User',
+      email: 'idempotency-other@example.com',
+      password: 'password123',
+    });
+    const second = await request(app)
+      .post('/api/jobs')
+      .set('Authorization', `Bearer ${other.body.token}`)
+      .set('Idempotency-Key', key)
+      .send(sampleJob);
+
+    expect(first.statusCode).toBe(201);
+    expect(second.statusCode).toBe(201);
+    expect(second.body.job._id).not.toBe(first.body.job._id);
+  });
+
+  it('validates the idempotency key before writing', async () => {
+    const res = await auth(request(app).post('/api/jobs'))
+      .set('Idempotency-Key', 'short')
+      .send(sampleJob);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/between 8 and 128/);
+  });
+
   it('rejects job creation with missing required fields', async () => {
     const res = await auth(request(app).post('/api/jobs')).send({ company: 'Acme' });
     expect(res.statusCode).toBe(400);

@@ -29,8 +29,34 @@ const jobSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    idempotencyKey: {
+      type: String,
+      select: false,
+    },
+    idempotencyHash: {
+      type: String,
+      select: false,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_document, result) => {
+        delete result.idempotencyKey;
+        delete result.idempotencyHash;
+        return result;
+      },
+    },
+  }
+);
+
+jobSchema.index(
+  { createdBy: 1, idempotencyKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { idempotencyKey: { $type: 'string' } },
+    name: 'unique_job_creation_key_per_user',
+  }
 );
 
 module.exports = mongoose.model('Job', jobSchema);
