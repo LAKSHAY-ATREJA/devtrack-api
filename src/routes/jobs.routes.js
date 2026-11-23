@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const { body, header, validationResult } = require('express-validator');
 const authenticate = require('../middleware/auth.middleware');
 const {
   getJobs,
@@ -23,6 +23,12 @@ const validate = (req, res, next) => {
 const VALID_STATUSES = ['applied', 'interview', 'offer', 'rejected', 'accepted'];
 
 const createJobValidation = [
+  header('Idempotency-Key')
+    .optional()
+    .isLength({ min: 8, max: 128 })
+    .withMessage('Idempotency-Key must be between 8 and 128 characters')
+    .matches(/^[A-Za-z0-9._:-]+$/)
+    .withMessage('Idempotency-Key contains unsupported characters'),
   body('company').trim().notEmpty().withMessage('Company name is required').isLength({ max: 100 }).withMessage('Company name cannot exceed 100 characters'),
   body('position').trim().notEmpty().withMessage('Position is required').isLength({ max: 100 }).withMessage('Position cannot exceed 100 characters'),
   body('status').optional().isIn(VALID_STATUSES).withMessage(`Status must be one of: ${VALID_STATUSES.join(', ')}`),

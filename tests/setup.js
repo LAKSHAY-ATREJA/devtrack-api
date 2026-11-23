@@ -15,6 +15,7 @@ beforeAll(async () => {
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(uri);
   }
+  await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
 });
 
 afterEach(async () => {

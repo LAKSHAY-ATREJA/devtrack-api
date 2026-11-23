@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Job = require('../models/job.model');
+const { hashPayload } = require('../utils/idempotency');
 
 const ALLOWED_SORT_FIELDS = [
   'createdAt', '-createdAt',
@@ -62,6 +63,8 @@ exports.getJob = async (req, res, next) => {
 };
 
 exports.createJob = async (req, res, next) => {
+  const idempotencyKey = req.get('Idempotency-Key');
+  const idempotencyHash = idempotencyKey ? hashPayload(req.body) : undefined;
   try {
     const { company, position, status, location, salary, notes, appliedDate } = req.body;
     const job = await Job.create({
@@ -73,9 +76,30 @@ exports.createJob = async (req, res, next) => {
       notes,
       appliedDate,
       createdBy: req.user.id,
+      idempotencyKey,
+      idempotencyHash,
     });
     res.status(201).json({ job });
   } catch (err) {
+    if (idempotencyKey && err.code === 11000) {
+      try {
+        const existing = await Job.findOne({
+          createdBy: req.user.id,
+          idempotencyKey,
+        }).select('+idempotencyHash');
+        if (existing && existing.idempotencyHash === idempotencyHash) {
+          return res
+            .set('Idempotency-Replayed', 'true')
+            .status(200)
+            .json({ job: existing });
+        }
+        return res.status(409).json({
+          error: 'Idempotency key was already used with a different request',
+        });
+      } catch (lookupError) {
+        return next(lookupError);
+      }
+    }
     next(err);
   }
 };
